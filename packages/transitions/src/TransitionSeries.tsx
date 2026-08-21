@@ -128,7 +128,13 @@ type SeriesSequenceProps = PropsWithChildren<
 		Pick<
 			SequencePropsWithoutDuration,
 			'name' | 'showInTimeline' | 'freeze' | 'hidden' | 'trimBefore'
-		>
+		> & {
+			readonly premountFor?: number;
+			/**
+			 * Not supported together with layout="none".
+			 */
+			readonly postmountFor?: number;
+		}
 >;
 
 type ResolvedSeriesSequenceProps = SeriesSequenceProps & {
