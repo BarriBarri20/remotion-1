@@ -320,6 +320,7 @@ export const makeHtmlInCanvasPresentation = <
 		return {
 			component: CompWithShader,
 			props,
+			capturesElementImage: true,
 		};
 	};
 };

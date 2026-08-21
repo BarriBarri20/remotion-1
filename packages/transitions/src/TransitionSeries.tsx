@@ -9,6 +9,7 @@ import type {
 } from 'remotion';
 import {
 	Internals,
+	HtmlInCanvas,
 	Interactive,
 	Sequence,
 	useCurrentFrame,
@@ -20,6 +21,7 @@ import {
 	WrapInExitingProgressContext,
 } from './context.js';
 import {flattenChildren} from './flatten-children.js';
+import {passThroughCapture, shouldAutoCapture} from './pass-through-capture.js';
 import {slide} from './presentations/slide.js';
 import type {
 	TransitionSeriesOverlayProps,
@@ -702,6 +704,67 @@ const TransitionSeriesChildren: FC<{readonly children: React.ReactNode}> = ({
 						const UppercaseNextPresentation = nextPresentation.component;
 						const UppercasePrevPresentation = prevPresentation.component;
 
+						// An html-in-canvas transition exiting this scene needs its
+						// pixels. In the nested case they can only come from the
+						// presentation the scene entered through; if that one is
+						// plain DOM, wrap it in a pass-through capture.
+						const autoCapture = shouldAutoCapture(
+							prevPresentation,
+							nextPresentation,
+							HtmlInCanvas.isSupported(),
+						);
+						const PassThrough = passThroughCapture.component;
+
+						const enteringNode = (
+							<UppercasePrevPresentation
+								passedProps={prevPresentation.props ?? {}}
+								presentationDirection="entering"
+								presentationProgress={prevProgress}
+								presentationDurationInFrames={prev.props.timing.getDurationInFrames(
+									{fps},
+								)}
+								onElementImage={(elementImage, draw) => {
+									onPrevElementImage(elementImage, nextProgress, draw, i + 1);
+									onNextElementImage(elementImage, prevProgress, draw, i - 1);
+								}}
+								onUnmount={() => {
+									onPrevElementImage(null, null, null, i + 1);
+									onNextElementImage(null, null, null, i - 1);
+								}}
+								bothEnteringAndExiting
+							>
+								<WrapInEnteringProgressContext
+									presentationProgress={prevProgress}
+								>
+									{sequenceChildren}
+								</WrapInEnteringProgressContext>
+							</UppercasePrevPresentation>
+						);
+
+						const innerNode = autoCapture ? (
+							<PassThrough
+								passedProps={{}}
+								presentationDirection="entering"
+								presentationProgress={prevProgress}
+								presentationDurationInFrames={prev.props.timing.getDurationInFrames(
+									{fps},
+								)}
+								onElementImage={(elementImage, draw) => {
+									onPrevElementImage(elementImage, nextProgress, draw, i + 1);
+									onNextElementImage(elementImage, prevProgress, draw, i - 1);
+								}}
+								onUnmount={() => {
+									onPrevElementImage(null, null, null, i + 1);
+									onNextElementImage(null, null, null, i - 1);
+								}}
+								bothEnteringAndExiting
+							>
+								{enteringNode}
+							</PassThrough>
+						) : (
+							enteringNode
+						);
+
 						return renderSequenceAndRest(
 							<SequenceWithoutSchema
 								key={i}
@@ -734,39 +797,7 @@ const TransitionSeriesChildren: FC<{readonly children: React.ReactNode}> = ({
 									<WrapInExitingProgressContext
 										presentationProgress={nextProgress}
 									>
-										<UppercasePrevPresentation
-											passedProps={prevPresentation.props ?? {}}
-											presentationDirection="entering"
-											presentationProgress={prevProgress}
-											presentationDurationInFrames={prev.props.timing.getDurationInFrames(
-												{fps},
-											)}
-											onElementImage={(elementImage, draw) => {
-												onPrevElementImage(
-													elementImage,
-													nextProgress,
-													draw,
-													i + 1,
-												);
-												onNextElementImage(
-													elementImage,
-													prevProgress,
-													draw,
-													i - 1,
-												);
-											}}
-											onUnmount={() => {
-												onPrevElementImage(null, null, null, i + 1);
-												onNextElementImage(null, null, null, i - 1);
-											}}
-											bothEnteringAndExiting
-										>
-											<WrapInEnteringProgressContext
-												presentationProgress={prevProgress}
-											>
-												{sequenceChildren}
-											</WrapInEnteringProgressContext>
-										</UppercasePrevPresentation>
+										{innerNode}
 									</WrapInExitingProgressContext>
 								</UppercaseNextPresentation>
 							</SequenceWithoutSchema>,

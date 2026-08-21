@@ -25,6 +25,14 @@ export type TransitionPresentation<
 		TransitionPresentationComponentProps<PresentationProps>
 	>;
 	props: PresentationProps;
+	/**
+	 * Whether this presentation captures the scene pixels via HTML-in-Canvas
+	 * and reports them through `onElementImage`. TransitionSeries uses this to
+	 * decide whether an adjacent non-capturing presentation must be wrapped in
+	 * a pass-through capture, so an html-in-canvas transition receives both
+	 * textures even when the neighboring transition renders plain DOM.
+	 */
+	capturesElementImage?: boolean;
 };
 
 export type TransitionPresentationComponentProps<
